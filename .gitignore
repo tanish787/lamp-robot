@@ -16,3 +16,6 @@ models/
 # Local run artifacts
 *.log
 renders/
+
+# Isolated worktrees for in-progress implementation work
+.worktrees/
