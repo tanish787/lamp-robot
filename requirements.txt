@@ -1,0 +1,7 @@
+pybullet
+websockets
+numpy
+pillow
+simpleaudio
+pytest
+pytest-asyncio
