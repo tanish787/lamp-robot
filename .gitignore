@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Downloaded model weights (fetched by setup script, not committed)
+models/
+
+# OS/editor cruft
+.DS_Store
+.idea/
+.vscode/
+
+# Local run artifacts
+*.log
+renders/
