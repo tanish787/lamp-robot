@@ -12,3 +12,4 @@ webrtcvad
 faster-whisper
 piper-tts
 ultralytics
+llama-cpp-python
