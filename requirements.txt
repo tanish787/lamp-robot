@@ -5,3 +5,5 @@ pillow
 simpleaudio
 pytest
 pytest-asyncio
+mediapipe
+opencv-python
