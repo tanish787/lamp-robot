@@ -117,9 +117,9 @@ class Orchestrator:
     # Engagement
     # ------------------------------------------------------------------
 
-    async def on_engagement_change(self, engaged: bool) -> None:
+    async def on_engagement_change(self, engaged: bool) -> list[dict]:
         if engaged:
-            await self.execute_actions([
+            return await self.execute_actions([
                 {"name": "curious_lean", "params": {}},
                 {"name": "set_light", "params": {"state": "pulse"}},
                 {"name": "play_sfx", "params": {"name": "chime"}},
@@ -129,7 +129,7 @@ class Orchestrator:
             # the lamp in whatever pose the last character response ended
             # in (e.g. still leaning in), so engaged and disengaged looked
             # identical.
-            await self.execute_actions([
+            return await self.execute_actions([
                 {"name": "neutral", "params": {}},
                 {"name": "idle_sway", "params": {}},
                 {"name": "set_light", "params": {"state": "dim"}},
