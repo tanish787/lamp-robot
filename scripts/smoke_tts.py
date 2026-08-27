@@ -1,6 +1,6 @@
 """Synthesize and play a sample line with the real Piper voice, printing
 latency. Run manually on the target hardware:
-    python scripts/smoke_tts.py "Hello, I can see you."
+    python -m scripts.smoke_tts "Hello, I can see you."
 """
 
 import sys

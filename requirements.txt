@@ -1,16 +1,30 @@
-pybullet
-websockets
-numpy
-pillow
-simpleaudio
-pytest
-pytest-asyncio
-mediapipe
-opencv-python
-sounddevice
-webrtcvad
-faster-whisper
-piper-tts
-ultralytics
-llama-cpp-python
-psutil
+# Version floors, not exact pins: these are the versions the project was
+# developed and tested against, and the APIs used here (notably
+# piper-tts >= 1.7's PiperVoice.synthesize_wav) are not present in older
+# releases. Pin exactly if you need byte-reproducible environments.
+
+# Body
+pybullet>=3.2.7
+websockets>=15.0
+numpy>=2.0
+pillow>=10.0
+simpleaudio>=1.0.4
+
+# Brain — perception
+mediapipe>=0.10.20
+opencv-python>=4.9
+ultralytics>=8.3
+
+# Brain — audio
+sounddevice>=0.5
+webrtcvad>=2.0.10
+faster-whisper>=1.1
+piper-tts>=1.7.0
+
+# Brain — reasoning
+llama-cpp-python>=0.3
+
+# Tooling
+pytest>=8.0
+pytest-asyncio>=0.24
+psutil>=6.0

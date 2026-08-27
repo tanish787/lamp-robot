@@ -1,6 +1,6 @@
 """Exercise the real local LLM on a canned prompt, printing latency. Run
 manually on the target hardware:
-    python scripts/smoke_llm.py
+    python -m scripts.smoke_llm
 """
 
 import time

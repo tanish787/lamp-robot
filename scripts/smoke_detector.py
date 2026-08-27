@@ -1,6 +1,6 @@
 """Run the real detector on a sample image, printing detections and
 latency. Run manually:
-    python scripts/smoke_detector.py path/to/sample.jpg
+    python -m scripts.smoke_detector path/to/sample.jpg
 """
 
 import sys
