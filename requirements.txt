@@ -13,3 +13,4 @@ faster-whisper
 piper-tts
 ultralytics
 llama-cpp-python
+psutil
