@@ -58,6 +58,17 @@ class TextToSpeech:
 
 
 def _play_wav_bytes(audio: bytes) -> None:
-    import simpleaudio
+    # `simpleaudio`'s native bindings segfaulted reliably on real Ubuntu
+    # target hardware (confirmed during deployment testing); the system's
+    # own `aplay` plays the same audio without issue, so we shell out to
+    # it via a temp file instead of depending on a fragile compiled
+    # extension. This call is expected to block until playback finishes
+    # (matching simpleaudio's `.wait_done()`), since the caller already
+    # runs it in a thread via `asyncio.to_thread`.
+    import subprocess
+    import tempfile
 
-    simpleaudio.WaveObject.from_wave_file(io.BytesIO(audio)).play().wait_done()
+    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+        tmp.write(audio)
+        tmp.flush()
+        subprocess.run(["aplay", "-q", tmp.name], check=False)

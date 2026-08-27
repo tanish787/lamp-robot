@@ -8,7 +8,9 @@ pybullet>=3.2.7
 websockets>=15.0
 numpy>=2.0
 pillow>=10.0
-simpleaudio>=1.0.4
+# Audio playback shells out to the system's `aplay` (alsa-utils, present by
+# default on Ubuntu Desktop) rather than depending on `simpleaudio`, whose
+# native bindings segfaulted reliably on real target hardware.
 
 # Brain — perception
 mediapipe>=0.10.20

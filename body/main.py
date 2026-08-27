@@ -1,8 +1,7 @@
 import argparse
 import asyncio
+import subprocess
 from pathlib import Path
-
-import simpleaudio
 
 from body.light_sfx import LightState, MusicPlayer, SfxPlayer
 from body.server import BodyServer
@@ -13,11 +12,18 @@ MUSIC_DIR = Path(__file__).resolve().parent / "assets" / "music"
 
 
 def _play_clip(path: Path) -> None:
-    simpleaudio.WaveObject.from_wave_file(str(path)).play()
+    # `simpleaudio`'s native bindings segfaulted reliably on real Ubuntu
+    # target hardware (confirmed during deployment testing), while the
+    # system's own `aplay` plays the same files without issue — so we
+    # shell out to it instead of depending on a fragile compiled
+    # extension. Non-blocking (Popen, not run), matching simpleaudio's
+    # original fire-and-forget playback so a sound effect never stalls
+    # Body's asyncio event loop.
+    subprocess.Popen(["aplay", "-q", str(path)])
 
 
 def _play_loop(path: Path, loop: bool) -> None:
-    # Minimal loop: simpleaudio has no native loop flag; re-triggering on
+    # Minimal loop: aplay has no native loop flag; re-triggering on
     # completion is left as a documented follow-up (see technical note).
     _play_clip(path)
 

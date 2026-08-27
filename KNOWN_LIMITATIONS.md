@@ -43,8 +43,8 @@ byte-for-byte.
 placeholder tones, not designed sound effects. They exist so the demo runs
 out of the box; replace them before recording (see `body/assets/README.md`).
 
-`body/main.py`'s music playback does not actually loop — `simpleaudio` has
-no loop flag and the clip is played once.
+`body/main.py`'s music playback does not actually loop — `aplay` has no
+loop flag and the clip is played once.
 
 ## Simulation and motion
 
@@ -87,3 +87,12 @@ no loop flag and the clip is played once.
   device behaviour is verified in the manual live pass.
 - No systemd/service packaging. The demo is a manually launched two-process
   run.
+- Audio playback originally used `simpleaudio`, which segfaulted reliably
+  during real-hardware testing on an Ubuntu 24.04 VM (confirmed in
+  isolation: Piper synthesis and the system's own `aplay` both worked
+  correctly against the same audio device; only `simpleaudio`'s native
+  bindings crashed). It was replaced with a direct `aplay` subprocess call
+  in both `body/main.py` and `brain/tts.py`. This is exactly the class of
+  bug the deployment target's real hardware surfaces and a dev-machine
+  test suite cannot — noted here as a concrete example of why the manual
+  live pass on real hardware matters, not just as a fixed bug.
