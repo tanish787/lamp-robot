@@ -9,3 +9,4 @@ mediapipe
 opencv-python
 sounddevice
 webrtcvad
+faster-whisper
