@@ -16,10 +16,21 @@ def encode_command(id_: int, cmd: str, params: dict) -> str:
 
 
 def decode_command(raw: str) -> dict:
+    """Decode and *fully* type-check a command frame.
+
+    Both sides trust the shape this returns, so presence checks are not
+    enough: `cmd` must be a string and `params` a dict, or downstream
+    vocabulary lookups (`cmd in BODY_ACTIONS`, `params[key]`) blow up on
+    JSON that is well-formed but nonsense.
+    """
     data = _parse_json(raw)
     if "id" not in data or "cmd" not in data:
         raise ProtocolError("command missing required fields 'id'/'cmd'")
-    data.setdefault("params", {})
+    if not isinstance(data["cmd"], str):
+        raise ProtocolError(f"command 'cmd' must be a string, got {type(data['cmd']).__name__}")
+    params = data.setdefault("params", {})
+    if not isinstance(params, dict):
+        raise ProtocolError(f"command 'params' must be an object, got {type(params).__name__}")
     return data
 
 

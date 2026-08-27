@@ -81,3 +81,40 @@ def test_handle_message_rejects_malformed_json(server):
     ack = decode_ack(reply)
     assert ack["status"] == "error"
     assert ack["id"] is None
+
+
+# Regression: these four frames are all valid JSON but the wrong *shape*.
+# Before the fix each one raised out of handle_message (TypeError from a
+# `in`/subscript against a non-dict/non-str), which killed the whole
+# WebSocket connection because Brain has no reconnect.
+MALFORMED_BUT_JSON_VALID = [
+    '{"id": 1, "cmd": "set_light", "params": null}',
+    '{"id": 2, "cmd": "look_at", "params": "direction"}',
+    '{"id": 3, "cmd": ["nod"], "params": {}}',
+    '{"id": 4, "cmd": "set_light", "params": ["state"]}',
+]
+
+
+@pytest.mark.parametrize("raw", MALFORMED_BUT_JSON_VALID)
+def test_handle_message_error_acks_malformed_but_json_valid_frames(server, raw):
+    reply = asyncio.run(server.handle_message(raw))
+    ack = decode_ack(reply)
+    assert ack["status"] == "error"
+    assert ack["error"]
+
+
+def test_connection_survives_every_malformed_frame(server):
+    """Each bad frame gets an error ack and the next good command still
+    works, i.e. nothing escapes handle_message to close the socket."""
+    async def scenario():
+        for raw in MALFORMED_BUT_JSON_VALID:
+            ack = decode_ack(await server.handle_message(raw))
+            assert ack["status"] == "error"
+        good = decode_ack(await server.handle_message(
+            encode_command(99, "look_at", {"direction": "right"})
+        ))
+        return good
+
+    ack = asyncio.run(scenario())
+    assert ack["status"] == "done"
+    assert ack["id"] == 99
