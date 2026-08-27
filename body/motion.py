@@ -28,6 +28,26 @@ _LOOK_TARGETS: dict[str, dict[int, float]] = {
     "down": {4: 0.5},
 }
 
+# Actions whose character comes from motion over time, not from a resting
+# pose. Each entry is a list of *incremental* joint offsets applied from
+# wherever the joint currently is; every sequence sums to zero, so the
+# action oscillates and then returns to its starting pose. Without this a
+# `nod` right after a `curious_lean` was a literal no-op (both target
+# head_pitch 0.4) and `idle_sway` was a single static 0.05 offset.
+_OSCILLATIONS: dict[str, list[dict[int, float]]] = {
+    # head_pitch down-up-down-up
+    "nod": [{4: 0.30}, {4: -0.30}, {4: 0.20}, {4: -0.20}],
+    # neck_yaw left-right-left-centre
+    "shake": [{3: -0.35}, {3: 0.70}, {3: -0.70}, {3: 0.35}],
+    # slow, small base_yaw drift either side of where it already is
+    "idle_sway": [{0: 0.08}, {0: -0.16}, {0: 0.16}, {0: -0.08}],
+}
+
+_STATIC_POSES: dict[str, dict[int, float]] = {
+    "curious_lean": CURIOUS_POSE,
+    "neutral": NEUTRAL,
+}
+
 # Motion-only subset of BODY_ACTIONS: excludes set_light/play_sfx/play_music,
 # which body.light_sfx handles instead of body.motion.
 _MOTION_ACTIONS = BODY_ACTIONS - {"set_light", "play_sfx", "play_music"}
@@ -44,28 +64,49 @@ def clamp_pose(pose: dict[int, float]) -> dict[int, float]:
     return {i: clamp_target(i, v) for i, v in pose.items()}
 
 
-def resolve_action(name: str, params: dict) -> dict[int, float]:
-    """Turn a named motion action + params into a clamped pose overlay.
+def resolve_waypoints(
+    name: str, params: dict, current: dict[int, float] | None = None
+) -> list[dict[int, float]]:
+    """Turn a named motion action + params into the ordered list of clamped
+    pose overlays it should pass through.
 
-    Returns only the joints this action moves; the caller (simulation.py)
-    leaves every other joint at its current position.
+    Each overlay names only the joints this action moves; the caller
+    (simulation.py) leaves every other joint at its current position.
+    Static actions return a single waypoint; oscillating ones
+    (nod/shake/idle_sway) and scan_sweep return several, so they actually
+    animate instead of snapping to one target and stopping there.
     """
     if name not in _MOTION_ACTIONS:
-        raise ValueError(f"resolve_action: {name!r} is not a Body motion action")
+        raise ValueError(f"resolve_waypoints: {name!r} is not a Body motion action")
+
     if name == "look_at":
         direction = params.get("direction", "center")
-        pose = _LOOK_TARGETS.get(direction, _LOOK_TARGETS["center"])
-    elif name == "curious_lean":
-        pose = CURIOUS_POSE
-    elif name == "nod":
-        pose = {4: 0.4}
-    elif name == "shake":
-        pose = {0: 0.3}
-    elif name == "scan_sweep":
-        pose = {0: SOFT_LIMITS[0][2]}
-    else:  # idle_sway
-        pose = {0: 0.05}
-    return clamp_pose(pose)
+        return [clamp_pose(_LOOK_TARGETS.get(direction, _LOOK_TARGETS["center"]))]
+
+    if name in _STATIC_POSES:
+        return [clamp_pose(_STATIC_POSES[name])]
+
+    if name == "scan_sweep":
+        _, lower, upper = SOFT_LIMITS[0]
+        return [clamp_pose({0: lower}), clamp_pose({0: upper}), clamp_pose({0: 0.0})]
+
+    base = dict(NEUTRAL) if current is None else dict(current)
+    waypoints: list[dict[int, float]] = []
+    running: dict[int, float] = {}
+    for offset in _OSCILLATIONS[name]:
+        for joint, delta in offset.items():
+            # Accumulate unclamped so a clipped extreme doesn't shift where
+            # the oscillation lands; only the emitted waypoint is clamped.
+            running[joint] = running.get(joint, base.get(joint, 0.0)) + delta
+        waypoints.append(clamp_pose(dict(running)))
+    return waypoints
+
+
+def resolve_action(
+    name: str, params: dict, current: dict[int, float] | None = None
+) -> dict[int, float]:
+    """The resting pose overlay an action ends on (its last waypoint)."""
+    return resolve_waypoints(name, params, current)[-1]
 
 
 def plan_trajectory(current: float, target: float, steps: int) -> list[float]:

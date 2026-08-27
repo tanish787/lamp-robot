@@ -32,6 +32,19 @@ def test_sfx_player_raises_for_missing_clip(tmp_path):
         player.play("nonexistent")
 
 
+@pytest.mark.parametrize("name", ["../../secret", "sub/../../secret", "/abs/secret"])
+def test_sfx_player_refuses_names_that_escape_the_assets_dir(tmp_path, name):
+    player = SfxPlayer(tmp_path, player=lambda path: None)
+    with pytest.raises(ValueError):
+        player.play(name)
+
+
+def test_music_player_refuses_names_that_escape_the_assets_dir(tmp_path):
+    music = MusicPlayer(tmp_path, player=lambda path, loop: None)
+    with pytest.raises(ValueError):
+        music.play("../../secret")
+
+
 def test_music_player_play_and_stop(tmp_path):
     (tmp_path / "ambient.wav").write_bytes(b"RIFF....WAVEfmt ")
     started, stopped = [], []

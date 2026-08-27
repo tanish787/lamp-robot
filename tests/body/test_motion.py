@@ -1,7 +1,8 @@
 import pytest
 
 from body.motion import (
-    SOFT_LIMITS, clamp_target, clamp_pose, resolve_action, plan_trajectory,
+    NEUTRAL, SOFT_LIMITS, clamp_target, clamp_pose, resolve_action,
+    resolve_waypoints, plan_trajectory,
 )
 
 
@@ -42,6 +43,49 @@ def test_resolve_action_unknown_name_raises():
 def test_resolve_action_rejects_brain_local_action():
     with pytest.raises(ValueError):
         resolve_action("speak", {"text": "hi"})
+
+
+@pytest.mark.parametrize("name", ["nod", "shake", "idle_sway"])
+def test_oscillating_actions_return_several_waypoints(name):
+    waypoints = resolve_waypoints(name, {})
+    assert len(waypoints) > 1
+
+
+@pytest.mark.parametrize("name,joint", [("nod", 4), ("shake", 3), ("idle_sway", 0)])
+def test_oscillating_actions_end_where_they_started(name, joint):
+    """A nod is motion, not a new resting pose — it must come back."""
+    start = 0.25
+    waypoints = resolve_waypoints(name, {}, {joint: start})
+    assert waypoints[-1][joint] == pytest.approx(start)
+    assert any(w[joint] != pytest.approx(start) for w in waypoints[:-1])
+
+
+def test_nod_after_curious_lean_actually_moves():
+    """Regression: nod used to target head_pitch 0.4, exactly where
+    curious_lean leaves it, so chaining them produced zero visible motion."""
+    lean = resolve_action("curious_lean", {})
+    waypoints = resolve_waypoints("nod", {}, lean)
+    assert any(w[4] != pytest.approx(lean[4]) for w in waypoints)
+
+
+def test_oscillation_waypoints_stay_within_soft_limits():
+    for name in ("nod", "shake", "idle_sway", "scan_sweep"):
+        for waypoint in resolve_waypoints(name, {}, resolve_action("curious_lean", {})):
+            for joint, target in waypoint.items():
+                _, lower, upper = SOFT_LIMITS[joint]
+                assert lower <= target <= upper
+
+
+def test_scan_sweep_sweeps_both_ways_and_recentres():
+    waypoints = resolve_waypoints("scan_sweep", {})
+    yaws = [w[0] for w in waypoints]
+    assert len(yaws) >= 3
+    assert min(yaws) < 0 < max(yaws)
+    assert yaws[-1] == pytest.approx(0.0)
+
+
+def test_neutral_returns_every_joint_to_origin():
+    assert resolve_action("neutral", {}) == NEUTRAL
 
 
 def test_plan_trajectory_interpolates_to_target():

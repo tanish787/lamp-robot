@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pybullet as p
 
-from body.motion import NEUTRAL, SOFT_LIMITS, plan_trajectory, resolve_action
+from body.motion import NEUTRAL, SOFT_LIMITS, plan_trajectory, resolve_waypoints
 from body.urdf_prep import prepare_urdf
 
 _DEFAULT_CACHE = Path(__file__).resolve().parent.parent / ".cache"
@@ -18,27 +18,33 @@ _DEFAULT_CACHE = Path(__file__).resolve().parent.parent / ".cache"
 class LampSimulation:
     def __init__(self, gui: bool = False, cache_dir: Path | None = None):
         self._client = p.connect(p.GUI if gui else p.DIRECT)
-        p.setGravity(0, 0, -9.81, physicsClientId=self._client)
-        patched_urdf = prepare_urdf(cache_dir or _DEFAULT_CACHE)
-        self._robot = p.loadURDF(
-            str(patched_urdf), useFixedBase=True, physicsClientId=self._client
-        )
+        try:
+            p.setGravity(0, 0, -9.81, physicsClientId=self._client)
+            patched_urdf = prepare_urdf(cache_dir or _DEFAULT_CACHE)
+            self._robot = p.loadURDF(
+                str(patched_urdf), useFixedBase=True, physicsClientId=self._client
+            )
+        except Exception:
+            # Don't leak a connected PyBullet client if asset prep or the
+            # URDF load fails partway through construction.
+            p.disconnect(physicsClientId=self._client)
+            raise
         self._pose = dict(NEUTRAL)
 
     def apply_action(self, name: str, params: dict, steps: int = 30) -> list[float]:
-        overlay = resolve_action(name, params)
-        for joint, target in overlay.items():
-            trajectory = plan_trajectory(self._pose[joint], target, steps)
-            for step_target in trajectory:
-                p.setJointMotorControl2(
-                    self._robot,
-                    joint,
-                    p.POSITION_CONTROL,
-                    targetPosition=step_target,
-                    physicsClientId=self._client,
-                )
-                p.stepSimulation(physicsClientId=self._client)
-            self._pose[joint] = target
+        for overlay in resolve_waypoints(name, params, self._pose):
+            for joint, target in overlay.items():
+                trajectory = plan_trajectory(self._pose[joint], target, steps)
+                for step_target in trajectory:
+                    p.setJointMotorControl2(
+                        self._robot,
+                        joint,
+                        p.POSITION_CONTROL,
+                        targetPosition=step_target,
+                        physicsClientId=self._client,
+                    )
+                    p.stepSimulation(physicsClientId=self._client)
+                self._pose[joint] = target
         return self.get_pose()
 
     def get_pose(self) -> list[float]:

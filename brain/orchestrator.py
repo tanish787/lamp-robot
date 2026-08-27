@@ -42,7 +42,12 @@ class Orchestrator:
                 {"name": "play_sfx", "params": {"name": "chime"}},
             ])
         else:
+            # `neutral` first: without an explicit reset, disengaging left
+            # the lamp in whatever pose the last character response ended
+            # in (e.g. still leaning in), so engaged and disengaged looked
+            # identical.
             await self.execute_actions([
+                {"name": "neutral", "params": {}},
                 {"name": "idle_sway", "params": {}},
                 {"name": "set_light", "params": {"state": "dim"}},
             ])

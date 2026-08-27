@@ -66,3 +66,13 @@ def test_on_engagement_change_false_returns_to_idle():
     sent_names = [name for name, _ in client.sent]
     assert "idle_sway" in sent_names
     assert any(name == "set_light" for name in sent_names)
+
+
+def test_on_engagement_change_false_resets_pose_before_idling():
+    """Otherwise a prior curious_lean is never undone and the disengaged
+    pose looks identical to the engaged one."""
+    tts, client = FakeTts(), FakeProtocolClient()
+    orchestrator = Orchestrator(tts=tts, protocol_client=client)
+    asyncio.run(orchestrator.on_engagement_change(False))
+    sent_names = [name for name, _ in client.sent]
+    assert sent_names.index("neutral") < sent_names.index("idle_sway")

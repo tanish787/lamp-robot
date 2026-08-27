@@ -33,3 +33,25 @@ def test_apply_action_moves_only_targeted_joints_from_neutral(sim):
 def test_get_pose_matches_last_apply_action(sim):
     applied = sim.apply_action("nod", {})
     assert sim.get_pose() == pytest.approx(applied, abs=1e-6)
+
+
+def test_nod_oscillates_and_returns_to_the_pre_nod_pose(sim):
+    sim.apply_action("curious_lean", {})
+    before = sim.get_pose()
+    after = sim.apply_action("nod", {})
+    assert after == pytest.approx(before, abs=1e-6)
+
+
+def test_neutral_visibly_undoes_a_curious_lean(sim):
+    leaned = sim.apply_action("curious_lean", {})
+    assert any(abs(v) > 0.1 for v in leaned)
+    assert sim.apply_action("neutral", {}) == pytest.approx([0.0] * 5, abs=1e-6)
+
+
+def test_idle_sway_after_a_lean_is_not_the_same_pose_as_engaged(sim):
+    """Disengaging must be visibly different from the engaged pose: the
+    orchestrator's disengage sequence resets to neutral first."""
+    leaned = sim.apply_action("curious_lean", {})
+    sim.apply_action("neutral", {})
+    idle = sim.apply_action("idle_sway", {})
+    assert idle != pytest.approx(leaned, abs=1e-6)
