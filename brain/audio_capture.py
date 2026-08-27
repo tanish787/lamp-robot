@@ -43,13 +43,28 @@ class Vad:
         return self._vad.is_speech(frame, self._sample_rate)
 
 
+def split_frames(raw: bytes, frame_bytes: int) -> list[bytes]:
+    """Cut raw PCM into fixed-size frames, discarding a trailing partial
+    frame. webrtcvad only accepts exactly 10/20/30 ms of audio and raises
+    on anything else, so a short final frame would fail the whole
+    listening window rather than just being ignored."""
+    if frame_bytes < 1:
+        raise ValueError("frame_bytes must be >= 1")
+    usable = len(raw) - (len(raw) % frame_bytes)
+    return [raw[i : i + frame_bytes] for i in range(0, usable, frame_bytes)]
+
+
 class MicStream:
-    """Thin wrapper around sounddevice, exercised by
-    scripts/smoke_audio_capture.py against a real microphone."""
+    """Thin wrapper around sounddevice, exercised against a real
+    microphone in the manual live pass."""
 
     def __init__(self, sample_rate: int = 16000, frame_ms: int = 30):
         self._sample_rate = sample_rate
         self._frame_samples = int(sample_rate * frame_ms / 1000)
+
+    @property
+    def frame_bytes(self) -> int:
+        return self._frame_samples * 2  # int16 = 2 bytes/sample
 
     def read_frames(self, duration_s: float) -> list[bytes]:
         import sounddevice as sd
@@ -61,6 +76,4 @@ class MicStream:
             dtype="int16",
         )
         sd.wait()
-        raw = recording.tobytes()
-        frame_bytes = self._frame_samples * 2  # int16 = 2 bytes/sample
-        return [raw[i : i + frame_bytes] for i in range(0, len(raw), frame_bytes)]
+        return split_frames(recording.tobytes(), self.frame_bytes)

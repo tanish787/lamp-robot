@@ -169,6 +169,7 @@ async def test_dialogue_loop_keeps_listening_after_a_bad_chunk():
     engaged.set()
     mic = FlakyMic()
 
-    await _run_briefly(_dialogue_loop(orchestrator, mic, FakeVad(), engaged), seconds=0.3)
+    # Longer than the loop's post-error backoff, so recovery is observable.
+    await _run_briefly(_dialogue_loop(orchestrator, mic, FakeVad(), engaged), seconds=0.9)
     assert mic.calls > 1
     assert orchestrator.utterances

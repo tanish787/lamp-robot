@@ -141,6 +141,9 @@ async def _dialogue_loop(orchestrator, mic, vad, engaged):
             raise
         except Exception:  # noqa: BLE001 - keep listening after a bad chunk
             _LOG.exception("dialogue loop iteration failed")
+            # A device that fails instantly would otherwise spin this loop
+            # (a healthy read_frames blocks for the listening window).
+            await asyncio.sleep(0.5)
 
 
 async def main_async(uri: str, camera_index: int = 0) -> None:

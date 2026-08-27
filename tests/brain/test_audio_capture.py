@@ -1,4 +1,30 @@
-from brain.audio_capture import segment_utterance
+import pytest
+
+from brain.audio_capture import MicStream, segment_utterance, split_frames
+
+
+def test_split_frames_drops_a_trailing_partial_frame():
+    """webrtcvad rejects a frame that is not exactly 10/20/30 ms, so a
+    short final frame must never be handed to it."""
+    frames = split_frames(b"x" * 2500, frame_bytes=960)
+    assert [len(f) for f in frames] == [960, 960]
+
+
+def test_split_frames_handles_an_exact_multiple():
+    assert len(split_frames(b"x" * 1920, frame_bytes=960)) == 2
+
+
+def test_split_frames_handles_audio_shorter_than_one_frame():
+    assert split_frames(b"x" * 100, frame_bytes=960) == []
+
+
+def test_split_frames_rejects_a_nonsense_frame_size():
+    with pytest.raises(ValueError):
+        split_frames(b"x" * 100, frame_bytes=0)
+
+
+def test_mic_stream_frame_bytes_matches_a_30ms_16khz_frame():
+    assert MicStream(sample_rate=16000, frame_ms=30).frame_bytes == 960
 
 
 def test_returns_none_if_no_speech_detected():
