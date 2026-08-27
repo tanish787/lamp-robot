@@ -8,11 +8,9 @@ from typing import Callable
 
 from shared.action_vocabulary import ACTIONS, is_valid_action
 
-_FALLBACK_ACTIONS = [{"name": "idle_sway", "params": {}}]
-
 _PLAN_PROMPT = """You control a lamp robot. Given the scene memory and a
 spoken goal, respond with a JSON array of actions to accomplish it. Each
-action is {{"name": one of %s, "params": {{...}}}}. Return ONLY the JSON array.
+action is {"name": one of %s, "params": {...}}. Return ONLY the JSON array.
 
 Scene memory:
 %s
@@ -35,7 +33,7 @@ class Reasoner:
         prompt = _PLAN_PROMPT % (list(ACTIONS), memory.as_prompt_text(), goal_text)
         raw = self._llm_call(prompt)
         actions = self._parse_and_validate(raw)
-        return actions if actions else list(_FALLBACK_ACTIONS)
+        return actions if actions else [{"name": "idle_sway", "params": {}}]
 
     def _parse_and_validate(self, raw: str) -> list[dict]:
         try:
@@ -49,6 +47,8 @@ class Reasoner:
             if not isinstance(item, dict):
                 continue
             name, params = item.get("name"), item.get("params", {})
+            if not isinstance(params, dict):
+                continue
             if isinstance(name, str) and is_valid_action(name, params):
                 valid.append({"name": name, "params": params})
         return valid
