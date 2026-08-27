@@ -7,3 +7,5 @@ pytest
 pytest-asyncio
 mediapipe
 opencv-python
+sounddevice
+webrtcvad
