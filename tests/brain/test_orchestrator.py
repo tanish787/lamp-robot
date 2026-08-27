@@ -302,3 +302,27 @@ def test_speak_with_does_not_block_the_event_loop():
 
     assert asyncio.run(scenario()) is True
     assert client.sent == [("nod", {})]
+
+
+def test_speak_with_awaits_the_speaking_task_even_if_execute_actions_raises():
+    """If execute_actions blows up mid-sequence, speak_with must still
+    await the in-flight speaking task rather than leaving the TTS thread
+    running orphaned and unawaited."""
+
+    class RaisingProtocolClient:
+        async def send_command(self, name, params):
+            raise RuntimeError("body rejected the command")
+
+    tts = FakeTts()
+    orchestrator = Orchestrator(tts=tts, protocol_client=RaisingProtocolClient())
+
+    async def scenario():
+        with pytest.raises(RuntimeError):
+            await orchestrator.speak_with("hello", [{"name": "nod", "params": {}}])
+        # Check this *inside* the still-running event loop, immediately
+        # after speak_with re-raised. asyncio.run() force-finishes any
+        # orphaned tasks during its own teardown, which would mask the
+        # bug if this assertion ran after asyncio.run() returned instead.
+        assert tts.spoken == ["hello"]
+
+    asyncio.run(scenario())

@@ -109,9 +109,14 @@ class Orchestrator:
         so the character looks like it is talking, rather than nodding and
         then, separately, speaking."""
         speaking = asyncio.create_task(asyncio.to_thread(self._tts.speak, text))
-        if actions:
-            await self.execute_actions(actions)
-        await speaking
+        try:
+            if actions:
+                await self.execute_actions(actions)
+        finally:
+            # Always await the speaking task, even if execute_actions
+            # raised — otherwise the TTS thread is left running orphaned,
+            # unawaited, for the rest of its (blocking) duration.
+            await speaking
 
     # ------------------------------------------------------------------
     # Engagement
