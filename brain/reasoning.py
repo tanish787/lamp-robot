@@ -6,11 +6,28 @@ checked before it can reach Body (spec section 8's fallback path)."""
 import json
 from typing import Callable
 
-from shared.action_vocabulary import ACTIONS, is_valid_action
+from shared.action_vocabulary import (
+    ACTIONS, LIGHT_STATES, LOOK_DIRECTIONS, MUSIC_TRACKS, SFX_NAMES,
+    is_valid_action,
+)
+
+# Every enumerated parameter is spelled out for the model. Validation drops
+# anything outside these sets anyway, so naming them up front is the
+# difference between a usable plan and a fallback to idle_sway.
+_ALLOWED_VALUES = "\n".join([
+    f"  look_at.direction: {sorted(LOOK_DIRECTIONS)}",
+    f"  set_light.state: {sorted(LIGHT_STATES)}",
+    f"  play_sfx.name: {sorted(SFX_NAMES)}",
+    f"  play_music.on: true/false, play_music.track: {sorted(MUSIC_TRACKS)}",
+    "  speak.text: any short sentence",
+])
 
 _PLAN_PROMPT = """You control a lamp robot. Given the scene memory and a
 spoken goal, respond with a JSON array of actions to accomplish it. Each
 action is {"name": one of %s, "params": {...}}. Return ONLY the JSON array.
+
+Allowed parameter values (anything else is rejected):
+%s
 
 Scene memory:
 %s
@@ -30,7 +47,7 @@ class Reasoner:
         return self._llm_call(prompt).strip()
 
     def plan_actions(self, goal_text: str, memory) -> list[dict]:
-        prompt = _PLAN_PROMPT % (list(ACTIONS), memory.as_prompt_text(), goal_text)
+        prompt = _PLAN_PROMPT % (list(ACTIONS), _ALLOWED_VALUES, memory.as_prompt_text(), goal_text)
         raw = self._llm_call(prompt)
         actions = self._parse_and_validate(raw)
         return actions if actions else [{"name": "idle_sway", "params": {}}]
