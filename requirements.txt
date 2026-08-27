@@ -10,3 +10,4 @@ opencv-python
 sounddevice
 webrtcvad
 faster-whisper
+piper-tts
