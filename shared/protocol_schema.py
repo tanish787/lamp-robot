@@ -23,7 +23,7 @@ def decode_command(raw: str) -> dict:
     return data
 
 
-def encode_ack(id_: int, status: str, pose: list | None = None, error: str | None = None) -> str:
+def encode_ack(id_: int | None, status: str, pose: list | None = None, error: str | None = None) -> str:
     return json.dumps({"id": id_, "status": status, "pose": pose, "error": error})
 
 
