@@ -35,7 +35,13 @@ def main() -> None:
     server = BodyServer(sim, light, sfx, music, port=args.port)
 
     print(f"Body listening on ws://127.0.0.1:{args.port}")
-    asyncio.run(server.serve())
+    try:
+        asyncio.run(server.serve())
+    except KeyboardInterrupt:
+        print("\nBody stopping.")
+    finally:
+        # Always disconnect the PyBullet client, including on Ctrl+C.
+        sim.close()
 
 
 if __name__ == "__main__":

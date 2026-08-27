@@ -34,15 +34,16 @@ class EngagementDebouncer:
 
 
 class MediaPipeFaceMonitor:
-    """Thin wrapper around mediapipe face detection. Exercised by
-    scripts/smoke_engagement.py against a real camera, not unit-tested."""
+    """Thin wrapper around mediapipe face detection. Frames are supplied by
+    the caller (brain/main.py owns the single capture device), so this
+    holds no camera of its own. Exercised against a real camera in the
+    manual live pass, not unit-tested."""
 
-    def __init__(self, camera_index: int = 0):
+    def __init__(self, min_detection_confidence: float = 0.6):
         import mediapipe as mp
 
-        self._camera_index = camera_index
         self._detector = mp.solutions.face_detection.FaceDetection(
-            model_selection=0, min_detection_confidence=0.6
+            model_selection=0, min_detection_confidence=min_detection_confidence
         )
 
     def detect(self, frame) -> bool:

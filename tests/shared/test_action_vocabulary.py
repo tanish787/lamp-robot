@@ -1,8 +1,7 @@
 from pathlib import Path
 
 from shared.action_vocabulary import (
-    ACTIONS, BODY_ACTIONS, BRAIN_LOCAL_ACTIONS, LOOK_DIRECTIONS,
-    LIGHT_STATES, MUSIC_TRACKS, SFX_NAMES, is_valid_action,
+    BODY_ACTIONS, BRAIN_LOCAL_ACTIONS, MUSIC_TRACKS, SFX_NAMES, is_valid_action,
 )
 
 _ASSETS = Path(__file__).resolve().parents[2] / "body" / "assets"

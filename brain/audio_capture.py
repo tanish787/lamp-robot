@@ -54,7 +54,6 @@ class MicStream:
     def read_frames(self, duration_s: float) -> list[bytes]:
         import sounddevice as sd
 
-        n_frames = int(duration_s * 1000 / (self._frame_samples / self._sample_rate * 1000))
         recording = sd.rec(
             int(duration_s * self._sample_rate),
             samplerate=self._sample_rate,
