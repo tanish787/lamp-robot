@@ -150,34 +150,40 @@ async def main_async(uri: str, camera_index: int = 0) -> None:
     client = ProtocolClient(uri=uri)
     await client.connect()
 
-    camera = Camera(camera_index)
-    latest = LatestFrame()
     try:
-        debouncer = EngagementDebouncer()
-        mic = MicStream()
-        vad = Vad()
-        face_monitor = MediaPipeFaceMonitor()
-        engaged = asyncio.Event()
+        camera = Camera(camera_index)
+        latest = LatestFrame()
+        try:
+            debouncer = EngagementDebouncer()
+            mic = MicStream()
+            vad = Vad()
+            face_monitor = MediaPipeFaceMonitor()
+            engaged = asyncio.Event()
 
-        orchestrator = Orchestrator(
-            tts=TextToSpeech(),
-            protocol_client=client,
-            engagement=debouncer,
-            audio=mic,
-            stt=SpeechToText(),
-            perception=ScenePerception(),
-            reasoner=Reasoner(),
-            memory=SceneMemory(),
-            frame_source=latest.get,
-        )
+            orchestrator = Orchestrator(
+                tts=TextToSpeech(),
+                protocol_client=client,
+                engagement=debouncer,
+                audio=mic,
+                stt=SpeechToText(),
+                perception=ScenePerception(),
+                reasoner=Reasoner(),
+                memory=SceneMemory(),
+                frame_source=latest.get,
+            )
 
-        print("Brain running. Ctrl+C to stop.")
-        await asyncio.gather(
-            _engagement_loop(orchestrator, face_monitor, debouncer, camera, latest, engaged),
-            _dialogue_loop(orchestrator, mic, vad, engaged),
-        )
+            print("Brain running. Ctrl+C to stop.")
+            # A TaskGroup rather than gather(): if one loop dies for good,
+            # the other is cancelled with it instead of being left running
+            # against a half-torn-down session.
+            async with asyncio.TaskGroup() as group:
+                group.create_task(_engagement_loop(
+                    orchestrator, face_monitor, debouncer, camera, latest, engaged
+                ))
+                group.create_task(_dialogue_loop(orchestrator, mic, vad, engaged))
+        finally:
+            camera.close()
     finally:
-        camera.close()
         await client.close()
 
 
