@@ -22,18 +22,24 @@ _ALLOWED_VALUES = "\n".join([
     "  speak.text: any short sentence",
 ])
 
-_PLAN_PROMPT = """You control a lamp robot. Given the scene memory and a
+_PLAN_SYSTEM = """You control a lamp robot. Given the scene memory and a
 spoken goal, respond with a JSON array of actions to accomplish it. Each
-action is {"name": one of %s, "params": {...}}. Return ONLY the JSON array.
+action is {"name": one of %s, "params": {...}}. Return ONLY the JSON
+array — no explanation, no markdown, nothing else.
 
 Allowed parameter values (anything else is rejected):
-%s
+%s"""
 
-Scene memory:
-%s
+# TinyLlama-1.1B-Chat (the pinned default model, see scripts/setup.sh) is
+# fine-tuned specifically on this chat template; feeding it plain
+# unstructured text causes it to ignore instructions and produce empty or
+# unparseable output instead of following them (confirmed during
+# deployment testing on the target hardware — this is not hypothetical).
+_CHAT_TEMPLATE = "<|system|>\n{system}</s>\n<|user|>\n{user}</s>\n<|assistant|>\n"
 
-Goal: %s
-"""
+
+def _chat_prompt(system: str, user: str) -> str:
+    return _CHAT_TEMPLATE.format(system=system, user=user)
 
 
 class Reasoner:
@@ -43,11 +49,18 @@ class Reasoner:
         self._llm_call = llm_call
 
     def reply(self, user_text: str, memory) -> str:
-        prompt = f"Scene memory:\n{memory.as_prompt_text()}\n\nUser said: {user_text}\nReply briefly."
+        system = (
+            "You are a lamp robot. Reply briefly and naturally to what the "
+            "person said, using the scene memory as context if it's relevant."
+        )
+        user = f"Scene memory:\n{memory.as_prompt_text()}\n\nThe person said: {user_text}"
+        prompt = _chat_prompt(system, user)
         return self._llm_call(prompt).strip()
 
     def plan_actions(self, goal_text: str, memory) -> list[dict]:
-        prompt = _PLAN_PROMPT % (list(ACTIONS), _ALLOWED_VALUES, memory.as_prompt_text(), goal_text)
+        system = _PLAN_SYSTEM % (list(ACTIONS), _ALLOWED_VALUES)
+        user = f"Scene memory:\n{memory.as_prompt_text()}\n\nGoal: {goal_text}"
+        prompt = _chat_prompt(system, user)
         raw = self._llm_call(prompt)
         actions = self._parse_and_validate(raw)
         return actions if actions else [{"name": "idle_sway", "params": {}}]
@@ -77,7 +90,11 @@ def _default_llm_call() -> Callable[[str], str]:
     llm = Llama(model_path="models/llm/model.gguf", n_ctx=2048, verbose=False)
 
     def call(prompt: str) -> str:
-        result = llm(prompt, max_tokens=256, stop=["\n\n"])
+        # "</s>" is TinyLlama-Chat's real end-of-turn token; "<|user|>" is a
+        # safety net in case the model tries to hallucinate a new turn
+        # instead of stopping cleanly. The previous stop=["\n\n"] didn't
+        # match this model's actual behavior and produced empty output.
+        result = llm(prompt, max_tokens=256, stop=["</s>", "<|user|>"])
         return result["choices"][0]["text"]
 
     return call
