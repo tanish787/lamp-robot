@@ -44,9 +44,18 @@ def _chat_prompt(system: str, user: str) -> str:
 
 class Reasoner:
     def __init__(self, llm_call: Callable[[str], str] | None = None):
+        # A single injected `llm_call` (used throughout the test suite) is
+        # deliberately reused for BOTH reply() and plan_actions() — this
+        # preserves the existing dependency-injection contract exactly.
+        # Only the real default path (llm_call=None) gets the upgrade: one
+        # shared model, wrapped as two call sites, one grammar-constrained.
         if llm_call is None:
-            llm_call = _default_llm_call()
-        self._llm_call = llm_call
+            llm = _load_default_llm()
+            self._llm_call = _make_llm_call(llm)
+            self._plan_llm_call = _make_llm_call(llm, grammar=_ACTION_PLAN_GRAMMAR)
+        else:
+            self._llm_call = llm_call
+            self._plan_llm_call = llm_call
 
     def reply(self, user_text: str, memory) -> str:
         system = (
@@ -61,7 +70,7 @@ class Reasoner:
         system = _PLAN_SYSTEM % (list(ACTIONS), _ALLOWED_VALUES)
         user = f"Scene memory:\n{memory.as_prompt_text()}\n\nGoal: {goal_text}"
         prompt = _chat_prompt(system, user)
-        raw = self._llm_call(prompt)
+        raw = self._plan_llm_call(prompt)
         actions = self._parse_and_validate(raw)
         return actions if actions else [{"name": "idle_sway", "params": {}}]
 
@@ -84,17 +93,52 @@ class Reasoner:
         return valid
 
 
-def _default_llm_call() -> Callable[[str], str]:
+# A minimal JSON grammar restricted at the top level to "array of {name,
+# params} objects" — the exact shape plan_actions() expects. This is
+# grammar-CONSTRAINED decoding (llama.cpp's GBNF), not prompt engineering:
+# every token the model emits is checked against this grammar as it's
+# generated, so the output is *structurally* guaranteed to parse as JSON
+# matching this shape, regardless of how well the underlying model
+# naturally follows instructions. shared.action_vocabulary.is_valid_action
+# still does the semantic check afterward (is "look_at" a real action, is
+# "direction" one of the allowed values) — the grammar only guarantees
+# syntax, not semantics. This is the actual fix for the failure mode
+# confirmed during deployment testing: a small local model producing
+# prose, markdown-fenced JSON, or truncated JSON instead of a clean array.
+_ACTION_PLAN_GRAMMAR = r'''
+root   ::= "[" ws (action ("," ws action)*)? ws "]"
+action ::= "{" ws "\"name\"" ws ":" ws string ws "," ws "\"params\"" ws ":" ws object ws "}"
+object ::= "{" ws (pair ("," ws pair)*)? ws "}"
+pair   ::= string ws ":" ws value
+value  ::= string | number | object | array | "true" | "false" | "null"
+array  ::= "[" ws (value ("," ws value)*)? ws "]"
+string ::= "\"" ([^"\\] | "\\" .)* "\""
+number ::= "-"? [0-9]+ ("." [0-9]+)?
+ws     ::= [ \t\n]*
+'''
+
+
+def _load_default_llm():
     from llama_cpp import Llama
 
-    llm = Llama(model_path="models/llm/model.gguf", n_ctx=2048, verbose=False)
+    return Llama(model_path="models/llm/model.gguf", n_ctx=2048, verbose=False)
+
+
+def _make_llm_call(llm, grammar: str | None = None) -> Callable[[str], str]:
+    compiled_grammar = None
+    if grammar is not None:
+        from llama_cpp import LlamaGrammar
+
+        compiled_grammar = LlamaGrammar.from_string(grammar)
 
     def call(prompt: str) -> str:
         # "</s>" is TinyLlama-Chat's real end-of-turn token; "<|user|>" is a
         # safety net in case the model tries to hallucinate a new turn
         # instead of stopping cleanly. The previous stop=["\n\n"] didn't
         # match this model's actual behavior and produced empty output.
-        result = llm(prompt, max_tokens=256, stop=["</s>", "<|user|>"])
+        result = llm(
+            prompt, max_tokens=256, stop=["</s>", "<|user|>"], grammar=compiled_grammar
+        )
         return result["choices"][0]["text"]
 
     return call
