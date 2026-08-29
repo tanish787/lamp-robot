@@ -29,7 +29,7 @@ LLM_DIR="$MODELS_DIR/llm"
 
 PIPER_VOICE_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
 PIPER_CONFIG_URL="$PIPER_VOICE_URL.json"
-LLM_URL="https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+LLM_URL="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 
 echo "==> Installing Python dependencies"
 python -m pip install -r requirements.txt

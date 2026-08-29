@@ -30,12 +30,15 @@ array — no explanation, no markdown, nothing else.
 Allowed parameter values (anything else is rejected):
 %s"""
 
-# TinyLlama-1.1B-Chat (the pinned default model, see scripts/setup.sh) is
-# fine-tuned specifically on this chat template; feeding it plain
+# Qwen2.5-1.5B-Instruct (the pinned default model, see scripts/setup.sh)
+# is fine-tuned specifically on this ChatML template; feeding it plain
 # unstructured text causes it to ignore instructions and produce empty or
 # unparseable output instead of following them (confirmed during
-# deployment testing on the target hardware — this is not hypothetical).
-_CHAT_TEMPLATE = "<|system|>\n{system}</s>\n<|user|>\n{user}</s>\n<|assistant|>\n"
+# deployment testing on the target hardware — this is not hypothetical;
+# an earlier, smaller pinned model, TinyLlama-1.1B-Chat, was replaced
+# after failing this same test even with its own correct chat template
+# and grammar-constrained decoding — see KNOWN_LIMITATIONS.md).
+_CHAT_TEMPLATE = "<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{user}<|im_end|>\n<|im_start|>assistant\n"
 
 
 def _chat_prompt(system: str, user: str) -> str:
@@ -132,12 +135,14 @@ def _make_llm_call(llm, grammar: str | None = None) -> Callable[[str], str]:
         compiled_grammar = LlamaGrammar.from_string(grammar)
 
     def call(prompt: str) -> str:
-        # "</s>" is TinyLlama-Chat's real end-of-turn token; "<|user|>" is a
-        # safety net in case the model tries to hallucinate a new turn
-        # instead of stopping cleanly. The previous stop=["\n\n"] didn't
-        # match this model's actual behavior and produced empty output.
+        # "<|im_end|>" is ChatML's real end-of-turn token; "<|im_start|>" is
+        # a safety net in case the model tries to hallucinate a new turn
+        # instead of stopping cleanly.
         result = llm(
-            prompt, max_tokens=256, stop=["</s>", "<|user|>"], grammar=compiled_grammar
+            prompt,
+            max_tokens=256,
+            stop=["<|im_end|>", "<|im_start|>"],
+            grammar=compiled_grammar,
         )
         return result["choices"][0]["text"]
 

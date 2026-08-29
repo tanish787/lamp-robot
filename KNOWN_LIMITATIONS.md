@@ -96,3 +96,18 @@ loop flag and the clip is played once.
   bug the deployment target's real hardware surfaces and a dev-machine
   test suite cannot — noted here as a concrete example of why the manual
   live pass on real hardware matters, not just as a fixed bug.
+- The originally pinned LLM, TinyLlama-1.1B-Chat, was replaced with
+  Qwen2.5-1.5B-Instruct after real-hardware testing. TinyLlama produced
+  empty replies with plain-text prompts; after fixing the chat template
+  and adding grammar-constrained decoding (GBNF, forcing `plan_actions`'
+  output to be structurally valid JSON regardless of the model's own
+  instruction-following quality — see `brain/reasoning.py`), it still
+  produced syntactically valid but semantically incoherent plans (e.g.
+  listing every action in the vocabulary with mismatched, hallucinated
+  parameters, rather than reasoning about the actual goal). This confirmed
+  the failure was model capacity, not prompt or decoding engineering.
+  Qwen2.5-1.5B was chosen as a free, open-weight model known for
+  stronger instruction-following relative to its size. The
+  grammar-constrained decoding was kept regardless of model choice — it's
+  a structural guarantee, not a workaround for one weak model, and is the
+  correct tool for reliable structured output from any small local model.
