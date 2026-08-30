@@ -146,7 +146,7 @@ async def _dialogue_loop(orchestrator, mic, vad, engaged):
             await asyncio.sleep(0.5)
 
 
-async def main_async(uri: str, camera_index: int = 0) -> None:
+async def main_async(uri: str, camera_index: int = 0, mic_device: int | str | None = None) -> None:
     client = ProtocolClient(uri=uri)
     await client.connect()
 
@@ -155,7 +155,7 @@ async def main_async(uri: str, camera_index: int = 0) -> None:
         latest = LatestFrame()
         try:
             debouncer = EngagementDebouncer()
-            mic = MicStream()
+            mic = MicStream(device=mic_device)
             vad = Vad()
             face_monitor = MediaPipeFaceMonitor()
             engaged = asyncio.Event()
@@ -192,9 +192,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--body-uri", default="ws://127.0.0.1:8765")
     parser.add_argument("--camera", type=int, default=0, help="camera device index")
+    parser.add_argument(
+        "--mic-device",
+        default=None,
+        help="sounddevice input device index or name override "
+        "(only needed if the default device captures silence — see KNOWN_LIMITATIONS.md)",
+    )
     args = parser.parse_args()
+    mic_device = int(args.mic_device) if args.mic_device is not None and args.mic_device.isdigit() else args.mic_device
     try:
-        asyncio.run(main_async(args.body_uri, args.camera))
+        asyncio.run(main_async(args.body_uri, args.camera, mic_device))
     except KeyboardInterrupt:
         print("\nBrain stopped.")
 

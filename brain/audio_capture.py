@@ -56,11 +56,24 @@ def split_frames(raw: bytes, frame_bytes: int) -> list[bytes]:
 
 class MicStream:
     """Thin wrapper around sounddevice, exercised against a real
-    microphone in the manual live pass."""
+    microphone in the manual live pass.
 
-    def __init__(self, sample_rate: int = 16000, frame_ms: int = 30):
+    `device` defaults to None (sounddevice/PortAudio's own default input
+    device), which is the right choice on real hardware. It's overridable
+    because deployment testing found a VirtualBox+PipeWire environment
+    where the *default* device silently captured pure silence while a
+    specific ALSA hardware device worked correctly (`arecord` against the
+    same hardware captured real audio; `sd.rec()` against "default" did
+    not) — this looks like a VM/PipeWire routing artifact rather than a
+    bug in this class, but the override exists so a specific device can
+    be selected without code changes if a similar mismatch shows up
+    elsewhere. See KNOWN_LIMITATIONS.md.
+    """
+
+    def __init__(self, sample_rate: int = 16000, frame_ms: int = 30, device: int | str | None = None):
         self._sample_rate = sample_rate
         self._frame_samples = int(sample_rate * frame_ms / 1000)
+        self._device = device
 
     @property
     def frame_bytes(self) -> int:
@@ -74,6 +87,7 @@ class MicStream:
             samplerate=self._sample_rate,
             channels=1,
             dtype="int16",
+            device=self._device,
         )
         sd.wait()
         return split_frames(recording.tobytes(), self.frame_bytes)

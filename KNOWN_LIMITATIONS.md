@@ -120,3 +120,16 @@ loop flag and the clip is played once.
   (`mediapipe.tasks.python.vision.FaceDetector`), which needs an explicit
   model file — `scripts/setup.sh` downloads `blaze_face_short_range.tflite`
   (Google's official small face-detector model) into `models/mediapipe/`.
+- `MicStream` (mic capture, via `sounddevice`/PortAudio) captured pure
+  silence through the system's *default* input device on a VirtualBox
+  VM, even though the same hardware worked correctly through `arecord`
+  (direct ALSA) — confirmed by recording with `sounddevice` and measuring
+  a peak amplitude of exactly 0. This looks like a VirtualBox+PipeWire
+  device-routing artifact rather than an application bug (a real,
+  non-virtualized laptop's default audio device is normally correctly
+  wired to its own mic), but it could not be verified as VM-only without
+  physical hardware to test against. `MicStream`/`brain.main` now accept
+  an optional device override (`--mic-device`) rather than hardcoding a
+  fix — the default remains the system default, which should be correct
+  on real hardware; the override exists for exactly this kind of
+  environment-specific mismatch if it recurs.
