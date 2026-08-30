@@ -30,6 +30,13 @@ sounddevice>=0.5
 webrtcvad>=2.0.10
 faster-whisper>=1.1
 piper-tts>=1.7.0
+# webrtcvad's bundled build metadata imports `pkg_resources` at runtime,
+# which setuptools 81+ removed. Without this cap, a fresh
+# `pip install -r requirements.txt` installs whatever setuptools is
+# newest and breaks import with "ModuleNotFoundError: No module named
+# 'pkg_resources'" (confirmed on real target hardware) — webrtcvad itself
+# is unmaintained and unlikely to ever fix this upstream.
+setuptools<81
 
 # Brain — reasoning
 llama-cpp-python>=0.3
