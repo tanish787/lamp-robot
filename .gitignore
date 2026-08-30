@@ -20,6 +20,7 @@ yolov8n.pt
 *.log
 renders/
 .cache/
+measurements.json
 
 # Isolated worktrees for in-progress implementation work
 .worktrees/
