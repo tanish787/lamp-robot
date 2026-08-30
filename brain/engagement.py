@@ -40,7 +40,7 @@ class MediaPipeFaceMonitor:
     the manual live pass, not unit-tested.
 
     Uses the Tasks API (mediapipe.tasks), not the older mp.solutions API
-    this class originally used: real-hardware testing found that
+    this class originally used: testing on the target VM found that
     mp.solutions has been removed from every mediapipe release currently
     installable (confirmed on both 1.0.1 and 0.10.35 — this was not a
     version-boundary issue, the legacy API is simply gone). The Tasks API

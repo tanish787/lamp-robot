@@ -80,6 +80,13 @@ loop flag and the clip is played once.
 
 ## Process and test environment
 
+Every entry below that says "testing on the target VM" means a VirtualBox
+VM configured to match the deployment spec (4 CPU cores, 8 GB RAM, Ubuntu
+24.04, real webcam/microphone/speaker passthrough) — not physical
+hardware. That validates the software against the actual target OS,
+driver, and library stack (which is where every bug below was found), but
+not physical-machine-only factors a VM cannot reproduce.
+
 - `.cache/` (the patched-URDF cache) is shared by every process in the
   repository. Two Body processes started simultaneously against the same
   cache directory could race while writing it. Tests avoid this by passing
@@ -91,16 +98,16 @@ loop flag and the clip is played once.
 - No systemd/service packaging. The demo is a manually launched two-process
   run.
 - Audio playback originally used `simpleaudio`, which segfaulted reliably
-  during real-hardware testing on an Ubuntu 24.04 VM (confirmed in
-  isolation: Piper synthesis and the system's own `aplay` both worked
-  correctly against the same audio device; only `simpleaudio`'s native
-  bindings crashed). It was replaced with a direct `aplay` subprocess call
-  in both `body/main.py` and `brain/tts.py`. This is exactly the class of
-  bug the deployment target's real hardware surfaces and a dev-machine
-  test suite cannot — noted here as a concrete example of why the manual
-  live pass on real hardware matters, not just as a fixed bug.
+  during testing on the target VM (confirmed in isolation: Piper
+  synthesis and the system's own `aplay` both worked correctly against
+  the same audio device; only `simpleaudio`'s native bindings crashed).
+  It was replaced with a direct `aplay` subprocess call in both
+  `body/main.py` and `brain/tts.py`. This is exactly the class of bug a
+  live pass on the deployment target's actual OS/library stack surfaces
+  and a dev-machine test suite cannot — noted here as a concrete example
+  of why that manual pass matters, not just as a fixed bug.
 - The originally pinned LLM, TinyLlama-1.1B-Chat, was replaced with
-  Qwen2.5-1.5B-Instruct after real-hardware testing. TinyLlama produced
+  Qwen2.5-1.5B-Instruct after testing on the target VM. TinyLlama produced
   empty replies with plain-text prompts; after fixing the chat template
   and adding grammar-constrained decoding (GBNF, forcing `plan_actions`'
   output to be structurally valid JSON regardless of the model's own
@@ -115,8 +122,8 @@ loop flag and the clip is played once.
   a structural guarantee, not a workaround for one weak model, and is the
   correct tool for reliable structured output from any small local model.
 - `MediaPipeFaceMonitor` originally used the legacy `mp.solutions` API
-  (`mp.solutions.face_detection`), which real-hardware testing found is
-  gone from mediapipe entirely — confirmed by direct introspection
+  (`mp.solutions.face_detection`), which testing on the target VM found
+  is gone from mediapipe entirely — confirmed by direct introspection
   (`hasattr(mediapipe, 'solutions')` is `False`) on both `1.0.1` and
   `0.10.35`. This was not a version-boundary problem an upper-bound pin
   could fix; the class now uses the Tasks API instead
