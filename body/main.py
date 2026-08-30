@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import subprocess
+import sys
 from pathlib import Path
 
 from body.light_sfx import LightState, MusicPlayer, SfxPlayer
@@ -19,7 +20,17 @@ def _play_clip(path: Path) -> None:
     # extension. Non-blocking (Popen, not run), matching simpleaudio's
     # original fire-and-forget playback so a sound effect never stalls
     # Body's asyncio event loop.
-    subprocess.Popen(["aplay", "-q", str(path)])
+    #
+    # Windows has no `aplay`; this branch exists purely for running the
+    # demo locally on a Windows dev machine (the actual deployment target
+    # is Ubuntu, where the branch below is what actually runs).
+    # `winsound` is stdlib on Windows only.
+    if sys.platform.startswith("win"):
+        import winsound
+
+        winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC)
+    else:
+        subprocess.Popen(["aplay", "-q", str(path)])
 
 
 def _play_loop(path: Path, loop: bool) -> None:

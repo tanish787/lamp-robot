@@ -65,6 +65,20 @@ def _play_wav_bytes(audio: bytes) -> None:
     # extension. This call is expected to block until playback finishes
     # (matching simpleaudio's `.wait_done()`), since the caller already
     # runs it in a thread via `asyncio.to_thread`.
+    #
+    # Windows has no `aplay`; this branch exists purely for running the
+    # demo locally on a Windows dev machine (the actual deployment target
+    # is Ubuntu, where the branch below is what actually runs). `winsound`
+    # is stdlib on Windows only, and SND_MEMORY plays WAV bytes directly
+    # with no temp file needed.
+    import sys
+
+    if sys.platform.startswith("win"):
+        import winsound
+
+        winsound.PlaySound(audio, winsound.SND_MEMORY)
+        return
+
     import subprocess
     import tempfile
 
