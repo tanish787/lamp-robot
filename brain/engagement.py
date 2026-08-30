@@ -34,18 +34,37 @@ class EngagementDebouncer:
 
 
 class MediaPipeFaceMonitor:
-    """Thin wrapper around mediapipe face detection. Frames are supplied by
-    the caller (brain/main.py owns the single capture device), so this
-    holds no camera of its own. Exercised against a real camera in the
-    manual live pass, not unit-tested."""
+    """Thin wrapper around mediapipe's Tasks API face detector. Frames are
+    supplied by the caller (brain/main.py owns the single capture device),
+    so this holds no camera of its own. Exercised against a real camera in
+    the manual live pass, not unit-tested.
 
-    def __init__(self, min_detection_confidence: float = 0.6):
+    Uses the Tasks API (mediapipe.tasks), not the older mp.solutions API
+    this class originally used: real-hardware testing found that
+    mp.solutions has been removed from every mediapipe release currently
+    installable (confirmed on both 1.0.1 and 0.10.35 — this was not a
+    version-boundary issue, the legacy API is simply gone). The Tasks API
+    needs an explicit model file rather than a bundled default; see
+    scripts/setup.sh, which downloads it to the path below.
+    """
+
+    def __init__(
+        self,
+        min_detection_confidence: float = 0.6,
+        model_path: str = "models/mediapipe/blaze_face_short_range.tflite",
+    ):
         import mediapipe as mp
+        from mediapipe.tasks import python as mp_python
+        from mediapipe.tasks.python import vision
 
-        self._detector = mp.solutions.face_detection.FaceDetection(
-            model_selection=0, min_detection_confidence=min_detection_confidence
+        self._mp = mp
+        base_options = mp_python.BaseOptions(model_asset_path=model_path)
+        options = vision.FaceDetectorOptions(
+            base_options=base_options, min_detection_confidence=min_detection_confidence
         )
+        self._detector = vision.FaceDetector.create_from_options(options)
 
     def detect(self, frame) -> bool:
-        results = self._detector.process(frame)
-        return bool(results.detections)
+        image = self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=frame)
+        result = self._detector.detect(image)
+        return bool(result.detections)

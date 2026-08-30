@@ -26,15 +26,17 @@ cd "$(dirname "$0")/.."
 MODELS_DIR="models"
 PIPER_DIR="$MODELS_DIR/piper"
 LLM_DIR="$MODELS_DIR/llm"
+MEDIAPIPE_DIR="$MODELS_DIR/mediapipe"
 
 PIPER_VOICE_URL="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
 PIPER_CONFIG_URL="$PIPER_VOICE_URL.json"
 LLM_URL="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+FACE_DETECTOR_URL="https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite"
 
 echo "==> Installing Python dependencies"
 python -m pip install -r requirements.txt
 
-mkdir -p "$PIPER_DIR" "$LLM_DIR"
+mkdir -p "$PIPER_DIR" "$LLM_DIR" "$MEDIAPIPE_DIR"
 
 fetch() {
   local url="$1" dest="$2"
@@ -52,6 +54,9 @@ fetch "$PIPER_CONFIG_URL" "$PIPER_DIR/en_US.onnx.json"
 
 echo "==> Local LLM (GGUF)"
 fetch "$LLM_URL" "$LLM_DIR/model.gguf"
+
+echo "==> Face detector (mediapipe Tasks API)"
+fetch "$FACE_DETECTOR_URL" "$MEDIAPIPE_DIR/blaze_face_short_range.tflite"
 
 echo "==> Warming the faster-whisper and YOLO caches"
 echo "    (these libraries manage their own cache; this just does the"

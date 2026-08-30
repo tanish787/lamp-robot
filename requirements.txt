@@ -13,15 +13,14 @@ pillow>=10.0
 # native bindings segfaulted reliably on real target hardware.
 
 # Brain — perception
-# mediapipe 1.0 removed the legacy `mp.solutions` API (face_detection,
-# face_mesh, etc.) in favor of a new Tasks API with a different model-
-# loading mechanism. brain/engagement.py uses the legacy API, so this is
-# capped below 1.0 rather than left as an open floor (confirmed broken on
-# real target hardware: `pip install -r requirements.txt` installed 1.0.1
-# and MediaPipeFaceMonitor failed with "module mediapipe has no attribute
-# 'solutions'"). Migrating to the Tasks API is a real option later, but
-# needs a separately-downloaded .tflite model and a rewrite, not a pin.
-mediapipe>=0.10.20,<1.0
+# mediapipe removed the legacy `mp.solutions` API (face_detection, etc.)
+# some time ago in favor of the Tasks API — confirmed by direct
+# introspection on real target hardware that it is absent from BOTH
+# mediapipe 1.0.1 and 0.10.35, so there is no installable version that
+# still has it; capping the version does not help. brain/engagement.py's
+# MediaPipeFaceMonitor uses the Tasks API instead, which needs the model
+# file scripts/setup.sh downloads to models/mediapipe/.
+mediapipe>=0.10.20
 opencv-python>=4.9
 ultralytics>=8.3
 

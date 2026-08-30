@@ -111,11 +111,12 @@ loop flag and the clip is played once.
   grammar-constrained decoding was kept regardless of model choice — it's
   a structural guarantee, not a workaround for one weak model, and is the
   correct tool for reliable structured output from any small local model.
-- `mediapipe`'s pinned floor (`>=0.10.20`) let `pip install` pick up
-  `mediapipe==1.0.1` on real-hardware testing, which removed the legacy
-  `mp.solutions` API (`brain/engagement.py`'s `MediaPipeFaceMonitor` uses
-  `mp.solutions.face_detection`) in favor of a new Tasks API with a
-  different model-loading mechanism. `requirements.txt` now caps this at
-  `<1.0`. Migrating `MediaPipeFaceMonitor` to the Tasks API is a real
-  option later — it needs a separately-downloaded `.tflite` model file
-  and a rewrite of the detection call, not just a version change.
+- `MediaPipeFaceMonitor` originally used the legacy `mp.solutions` API
+  (`mp.solutions.face_detection`), which real-hardware testing found is
+  gone from mediapipe entirely — confirmed by direct introspection
+  (`hasattr(mediapipe, 'solutions')` is `False`) on both `1.0.1` and
+  `0.10.35`. This was not a version-boundary problem an upper-bound pin
+  could fix; the class now uses the Tasks API instead
+  (`mediapipe.tasks.python.vision.FaceDetector`), which needs an explicit
+  model file — `scripts/setup.sh` downloads `blaze_face_short_range.tflite`
+  (Google's official small face-detector model) into `models/mediapipe/`.
