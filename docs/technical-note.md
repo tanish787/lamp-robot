@@ -1,4 +1,4 @@
-#HCL lamp robot live character
+# HCL lamp robot live character
 
 ## 1. Architecture
 
@@ -33,11 +33,8 @@ sequences. GPU-less ~8 GB machine, no network access at demo time.
                     └───────────────────────────────────────────────────────────┘
 ```
 
-Two processes: Brain blocks for seconds at a time on model inference;
-Body must stay responsive to the simulation. Either half restarts or gets
-replaced independently — Body with a real robot controller, for instance.
-`shared/` (the action vocabulary and wire schema) is the only common
-import; both sides validate independently, neither trusts the other.
+Two processes: Brain blocks for seconds at a time on model inference; Body must stay responsive to the simulation. Either half restarts or gets replaced independently. Body gets replaced with a real robot controller, for instance. shared/ (the action vocabulary and wire schema) is the only common import; both sides validate independently, neither trusts the other.
+
 
 ## 2. Protocol and action vocabulary
 
@@ -48,24 +45,14 @@ Brain → Body   {"id": 7, "cmd": "look_at", "params": {"direction": "left"}}
 Body  → Brain  {"id": 7, "status": "done", "pose": [0.0, ...], "error": null}
 ```
 
-Type checked at decode; a malformed frame gets an error ack instead of a
-crash, and the connection survives. Commands run in order; `speak` alone
-is local to the brain (never crosses the wire) and overlaps with `nod`/light
-pulse on a worker thread.
-
+Type checked at decode; a malformed frame gets an error ack instead of a crash, and the connection survives. Commands run in order; speak alone is local to the brain (never crosses the wire) and overlaps with nod/light pulse on a worker thread.
 ```
 look_at(direction) curious_lean() nod() shake() scan_sweep() idle_sway()
 neutral() set_light(state) play_sfx(name) play_music(on,track) speak(text)
 ```
 
-Every finite-range parameter is enumerated — no free-form string reaches
-the filesystem via `play_sfx`'s name. **The LLM picks from this
-vocabulary; it never computes kinematics** — `body/motion.py` clamps
-every target to the URDF's soft limits, so a hallucination yields an
-invalid action name (dropped at validation), never an unsafe pose.
-`nod`/`shake`/`idle_sway` oscillate via offsets that sum to zero (return
-to start); `scan_sweep` sweeps both extremes and recentres; `neutral`
-resets every joint, so disengaging looks visibly different from engaging.
+Every finite-range parameter is enumerated, with no free-form string reaches the filesystem via play_sfx's name. The LLM picks from this vocabulary; it never computes kinematics. That is where body/motion.py clamps every target to the URDF's soft limits, so a hallucination yields an invalid action name (dropped at validation), never an unsafe pose. nod/shake/idle_sway oscillate via offsets that sum to zero (return to start); scan_sweep sweeps both extremes and recentres; neutral resets every joint, so disengaging looks visibly different from engaging.
+
 
 ## 3. Models
 
@@ -78,23 +65,23 @@ resets every joint, so disengaging looks visibly different from engaging.
 | Reasoning | small quantized GGUF via llama.cpp | Fits the RAM budget alongside everything else. |
 
 Vision is composed, not fused: the detector emits text labels, the LLM
-reasons over them as text — no vision-language model, keeping the stack
+reasons over them as text. There's no vision-language model, which keepsg the stack
 inside the memory budget.
 
 ## 4. Engagement, concurrency, memory
 
 - **Engagement**: `EngagementDebouncer` holds face presence for 0.75 s
-  before flipping state, absorbing per-frame flicker — unit-tested at
+  before flipping state, absorbing per-frame flicker, which was unit-tested at
   that boundary.
 - **Concurrency**: two supervised asyncio tasks share one Orchestrator,
-  camera and connection — the engagement loop (sole camera owner, ~10
+  camera and connection: the engagement loop (sole camera owner, ~10
   fps) and the dialogue loop (records/transcribes once engaged). Blocking
   model/audio calls run via `asyncio.to_thread`, so TTS playback can't
   freeze the camera loop. Either loop logs and continues past an
-  exception — a dropped frame must not end a live demo.
+  exception, because a dropped frame must not end a live demo.
 - **Memory**: an in-process dict of `{id, label, attributes,
   first_seen_ts, last_seen_ts, notes}`, serialized as plain text into any
-  prompt that needs it — fine at a handful of objects; keyword filtering
+  prompt that needs it. This was fine at a handful of objects; keyword filtering
   is the documented (not built) escape hatch past that.
 
 ## 5. The five demo moments
@@ -129,7 +116,7 @@ retry-with-stricter-reprompt, mic fail-fast, WebSocket heartbeat/reconnect.
 
 ## 7. Deployment
 
-Plain venv plus `requirements.txt` — no Docker, avoiding container
+Plain venv plus `requirements.txt`. No Docker, to avoid container
 audio/video passthrough friction. `scripts/setup.sh` fetches model
 weights once; `scripts/run_all.sh` starts Body, waits for its port, then
 starts Brain.
@@ -137,7 +124,7 @@ starts Brain.
 ## 8. Measurements
 
 Collected with `python -m scripts.measure_technical_note` on a 4-core,
-8 GB Ubuntu 24.04 VM matching the target spec — reproducible, no live
+8 GB Ubuntu 24.04 VM matching the target spec. This is reproducible, no live
 camera or microphone needed (STT uses a Piper-synthesized sample;
 detector latency depends on frame size, not content).
 
@@ -152,6 +139,6 @@ detector latency depends on frame size, not content).
 | Peak RSS, full stack loaded | 3.06 GB — budget 7 GB |
 | Steady-state CPU while engaged | 9.7% of one core (~10 fps loop, face-present baseline) |
 
-Whisper and the LLM dominate every interaction — expected for CPU-only
+Whisper and the LLM dominate every interaction, as expected for CPU-only
 inference with no GPU; the demo overlaps `speak` with `nod`/light-pulse
 rather than trying to hide the latency.
