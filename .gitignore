@@ -7,6 +7,9 @@ venv/
 
 # Downloaded model weights (fetched by setup script, not committed)
 models/
+# ultralytics downloads yolov8n.pt into the current working directory
+# rather than into models/ (see KNOWN_LIMITATIONS.md's cache-vs-vendored note)
+yolov8n.pt
 
 # OS/editor cruft
 .DS_Store

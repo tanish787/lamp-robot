@@ -55,3 +55,57 @@ def test_idle_sway_after_a_lean_is_not_the_same_pose_as_engaged(sim):
     sim.apply_action("neutral", {})
     idle = sim.apply_action("idle_sway", {})
     assert idle != pytest.approx(leaned, abs=1e-6)
+
+
+def test_headless_apply_action_never_sleeps(tmp_path):
+    """gui=False, on_step=None (the default the whole test suite runs
+    under) must not pace itself against wall-clock time — a live viewer
+    isn't watching, so there is nothing to animate for."""
+    sleeps: list[float] = []
+    sim = LampSimulation(gui=False, cache_dir=tmp_path, sleep_fn=sleeps.append)
+    try:
+        sim.apply_action("scan_sweep", {})
+    finally:
+        sim.close()
+    assert sleeps == []
+
+
+def test_on_step_fires_once_per_simulation_step(tmp_path):
+    """A MeshCat mirror (or anything else) attached via on_step must see
+    every intermediate pose, not just the final one, or it would snap to
+    the end of the trajectory instead of animating."""
+    calls = 0
+
+    def count():
+        nonlocal calls
+        calls += 1
+
+    sim = LampSimulation(gui=False, cache_dir=tmp_path, on_step=count)
+    try:
+        sim.apply_action("nod", {}, steps=10)
+    finally:
+        sim.close()
+    # "nod" is 4 oscillation waypoints, one joint each, steps=10 -> 40 steps.
+    assert calls == 40
+
+
+def test_on_step_without_gui_still_paces_real_time(tmp_path):
+    """Attaching a viewer should pace playback even with no native GUI
+    window, so a MeshCat-only run animates instead of finishing instantly."""
+    sleeps: list[float] = []
+    sim = LampSimulation(
+        gui=False, cache_dir=tmp_path, on_step=lambda: None, sleep_fn=sleeps.append
+    )
+    try:
+        sim.apply_action("nod", {}, steps=10)
+    finally:
+        sim.close()
+    assert len(sleeps) == 40
+    assert all(s == pytest.approx(1.0 / 240.0) for s in sleeps)
+
+
+def test_robot_id_and_client_id_are_exposed(sim):
+    """A MeshCat mirror queries PyBullet's own forward kinematics directly,
+    so it needs the robot and client ids LampSimulation already holds."""
+    assert isinstance(sim.robot_id, int)
+    assert isinstance(sim.client_id, int)
