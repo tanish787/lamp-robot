@@ -56,8 +56,11 @@ loop flag and the clip is played once.
   There is no velocity/acceleration limiting beyond the per-step
   interpolation rate, and no collision checking against the environment.
 - Each `apply_action` call blocks the Body event loop while it steps the
-  simulation. At the demo's action rate this is not noticeable, but Body
-  cannot service a second command mid-motion.
+  simulation, so Body cannot service a second command mid-motion. In the
+  default headless run this is milliseconds and unnoticeable; with
+  `--gui` it is now deliberately paced to real time (see below), so a
+  large action visibly takes as long as it looks like it should, at the
+  cost of blocking Body for that same real time.
 
 ## Perception, memory and dialogue
 
@@ -133,3 +136,14 @@ loop flag and the clip is played once.
   fix — the default remains the system default, which should be correct
   on real hardware; the override exists for exactly this kind of
   environment-specific mismatch if it recurs.
+- `LampSimulation.apply_action` interpolated every joint purely in
+  *simulated* time — `p.stepSimulation()` advances the physics clock, but
+  nothing paced it to wall-clock time. Live-watching a `--gui` run, an
+  action like `scan_sweep` (a ~280° combined sweep) finished in a blink
+  rather than visibly animating: every simulation step ran back-to-back
+  with no delay, invisible to a human eye even though it was real motion.
+  This is exactly the class of bug that only surfaces by actually
+  watching a live run, not from the headless test suite, which never
+  renders anything. Fixed by sleeping between steps (matching PyBullet's
+  own 1/240 s default timestep) whenever `gui=True` or a viewer is
+  attached; headless runs are unaffected.
