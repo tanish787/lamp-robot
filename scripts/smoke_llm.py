@@ -1,5 +1,6 @@
 """Exercise the real local LLM on a canned prompt, printing latency. Run
-manually on the target hardware:
+manually on the target hardware (or a VM configured to match the target
+spec):
     python -m scripts.smoke_llm
 """
 

@@ -82,8 +82,9 @@ python -m scripts.resource_ceiling_check # loads the whole stack, exits 1 over b
 The test suite runs headless and needs no camera, microphone or model
 weights: model-shaped edges are faked and everything else — the protocol,
 the simulation, the action vocabulary, the orchestrator — is real. The smoke
-scripts are the manual checks that exercise the real models on the target
-hardware.
+scripts are the manual checks that exercise the real models — run them on
+the target hardware if you have it, or a VM configured to match the target
+spec otherwise (that's what this project was developed and tested against).
 
 ## Layout
 

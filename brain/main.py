@@ -20,8 +20,10 @@ Both loops are supervised: an exception inside one iteration is logged and
 the loop continues, because a single dropped frame or a transient audio
 error must not end a live demo.
 
-The loops themselves are verified in the manual live pass rather than by
-unit tests (real camera/mic, per the spec's testing strategy). Everything
+The loops themselves are exercised in the manual live pass rather than by
+unit tests (real camera/mic, per the spec's testing strategy) — the
+engagement loop reliably; the dialogue loop's mic capture was not made
+reliable in every environment tested (see KNOWN_LIMITATIONS.md). Everything
 they call — debounce, segmentation, the Orchestrator's routing, action
 validation, the protocol — is unit- and integration-tested.
 """

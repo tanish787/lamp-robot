@@ -1,5 +1,6 @@
 """Synthesize and play a sample line with the real Piper voice, printing
-latency. Run manually on the target hardware:
+latency. Run manually on the target hardware (or a VM configured to
+match the target spec):
     python -m scripts.smoke_tts "Hello, I can see you."
 """
 

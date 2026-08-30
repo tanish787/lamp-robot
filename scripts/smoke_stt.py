@@ -1,5 +1,6 @@
 """Load the real whisper model and transcribe a sample WAV file, printing
-the transcript and latency. Run manually on the target hardware:
+the transcript and latency. Run manually on the target hardware (or a VM
+configured to match the target spec):
     python -m scripts.smoke_stt path/to/sample.wav
 """
 

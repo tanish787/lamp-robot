@@ -93,8 +93,11 @@ not physical-machine-only factors a VM cannot reproduce.
   a per-test `cache_dir`; the real entry point does not, so run one Body at
   a time. A per-process cache directory would be the fix.
 - The live camera and microphone loops in `brain/main.py` are covered by
-  tests only with fake devices (`tests/brain/test_main_loops.py`). Real
-  device behaviour is verified in the manual live pass.
+  tests only with fake devices (`tests/brain/test_main_loops.py`). Camera
+  behaviour was confirmed working in the manual live pass; the microphone
+  path was not made reliable there (see the `MicStream`/VM entry below) —
+  "verified" for audio input means "transcribed real speech correctly at
+  least once with the right device selected," not "reliable every run."
 - No systemd/service packaging. The demo is a manually launched two-process
   run.
 - Audio playback originally used `simpleaudio`, which segfaulted reliably
