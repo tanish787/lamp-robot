@@ -1,8 +1,8 @@
-# Technical note — HCL lamp robot live character
+#HCL lamp robot live character
 
 ## 1. Architecture
 
-5-DOF desk-lamp character: notices someone via camera, reacts, converses,
+5DOF desk lamp character: notices someone via camera, reacts, converses,
 remembers what it has seen, and carries out spoken goals as action
 sequences. GPU-less ~8 GB machine, no network access at demo time.
 
@@ -48,9 +48,9 @@ Brain → Body   {"id": 7, "cmd": "look_at", "params": {"direction": "left"}}
 Body  → Brain  {"id": 7, "status": "done", "pose": [0.0, ...], "error": null}
 ```
 
-Type-checked at decode — a malformed frame gets an error ack, never a
+Type checked at decode; a malformed frame gets an error ack instead of a
 crash, and the connection survives. Commands run in order; `speak` alone
-is Brain-local (never crosses the wire) and overlaps with `nod`/light
+is local to the brain (never crosses the wire) and overlaps with `nod`/light
 pulse on a worker thread.
 
 ```
